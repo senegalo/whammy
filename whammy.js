@@ -133,14 +133,15 @@ window.Whammy = (function() {
             var getAudioFrame = function(shift) {
                 shift = shift || 0;
 
-                this.header = this.header ||  audioByteStream.slice(shift, shift + 4);
+                header = audioByteStream.slice(shift, shift + 4);
+                console.log(ABC.toBinary(header));
 
                 var samplingFreqLookup = [[44100, 48000, 32000], [22050, 24000, 16000]];
                 var bitrateLookup = [
                     [
                         [0, 32, 64, 96, 128, 160, 192, 224, 256, 288, 320, 352, 384, 416, 448],
                         [0, 32, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 384],
-                        [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 320]
+                        [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320]
                     ],
                     [
                         [0, 32, 48, 56, 64, 80, 96, 112, 128, 144, 160, 176, 192, 224, 256],
@@ -160,38 +161,49 @@ window.Whammy = (function() {
                         576     // Layer3
                     ]];
 
-                this.sampleRateFlag = this.sampleRateFlag || (toDecimal(header.slice(2, 3)) & 0x0c) >> 2;
-                this.bitrateFlag = this.bitrateFlag || (toDecimal(header.slice(2, 3)) & 0xf0) >> 4;
+                sampleRateFlag = (toDecimal(header.slice(2, 3)) & 0x0c) >> 2;
+                bitrateFlag = (toDecimal(header.slice(2, 3)) & 0xf0) >> 4;
+
+                version = versionLookup[(toDecimal(header.slice(1, 2)) & 0x30) >> 4];
 
 
-                this.version = this.version || versionLookup[(toDecimal(header.slice(1, 2)) & 0x30) >> 4];
-
-
-                this.sampleRate = this.sampleRate || samplingFreqLookup[version - 1][sampleRateFlag];
-                this.layer = this.layer || layerLookup[((toDecimal(header.slice(1, 2)) & 0x06) >> 1)];
-                this.bitrate = this.bitrate || bitrateLookup[version - 1][layer - 1][bitrateFlag] * 1000;
-                this.padding = this.padding || (toDecimal(header.slice(2, 3)) & 0x02) >> 1;
-                this.frameDuration = this.frameDuration || (samplesPerFrameLookup[version - 1][layer - 1] / sampleRate) * 1000;
                 
-                if(!this.frameSize){
+                sampleRate = samplingFreqLookup[version - 1][sampleRateFlag];
+                layer = layerLookup[((toDecimal(header.slice(1, 2)) & 0x06) >> 1)];
+                bitrate = bitrateLookup[version - 1][layer - 1][bitrateFlag] * 1000;
+                padding = (toDecimal(header.slice(2, 3)) & 0x02) >> 1;
+                frameDuration =  (samplesPerFrameLookup[version - 1][layer - 1] / sampleRate) * 1000;
+                
+                var frameSize;
+
                   if (layer === 1) {
-                    this.frameSize = (12 * this.bitrate / this.sampleRate + this.padding) * 4;
-                  } else if (this.layer === 2 || this.layer === 3) {
-                    this.frameSize = 144 * this.bitrate / this.sampleRate + this.padding;
+                    frameSize = (12 * bitrate / sampleRate + padding) * 4;
+                  } else if (layer === 2 || layer === 3) {
+                    frameSize = 144 * bitrate / sampleRate + padding;
                   } else {
                     throw "Unknown mp3 layer number";
                   }
-                  this.frameSize = Math.floor(this.frameSize);
-                }
+                  frameSize = Math.floor(frameSize);
+
+                  console.log({
+                    version: version,
+                    sampleRate: sampleRate,
+                    layer: layer,
+                    bitrate: bitrate,
+                    bitrateFlag: bitrateFlag,
+                    size: frameSize,
+                    duration: frameDuration,
+                    frame: audioByteStream.slice(shift, shift + frameSize)
+                });
 
                 return {
-                    version: this.version,
-                    sampleRate: this.sampleRate,
-                    layer: this.layer,
-                    bitrate: this.bitrate,
-                    size: this.frameSize,
-                    duration: this.frameDuration,
-                    frame: audioByteStream.slice(shift, shift + this.frameSize)
+                    version: version,
+                    sampleRate: sampleRate,
+                    layer: layer,
+                    bitrate: bitrate,
+                    size: frameSize,
+                    duration: frameDuration,
+                    frame: audioByteStream.slice(shift, shift + frameSize)
                 };
             };
             var frame = getAudioFrame();
@@ -439,7 +451,25 @@ window.Whammy = (function() {
         }
         return outBuffer;
     }
+    
 
+    var ABC = {
+      toAscii: function(bin) {
+        return bin.replace(/\s*[01]{8}\s*/g, function(bin) {
+          return String.fromCharCode(parseInt(bin, 2))
+        })
+      },
+      toBinary: function(str, spaceSeparatedOctets) {
+        return str.replace(/[\s\S]/g, function(str) {
+          str = ABC.zeroPad(str.charCodeAt().toString(2));
+          return !1 == spaceSeparatedOctets ? str : str + " "
+        })
+      },
+      zeroPad: function(num) {
+        return "00000000".slice(String(num).length) + num
+      }
+    };
+ 
 //OKAY, so the following two functions are the string-based old stuff, the reason they're
 //still sort of in here, is that they're actually faster than the new blob stuff because
 //getAsFile isn't widely implemented, or at least, it doesn't work in chrome, which is the
