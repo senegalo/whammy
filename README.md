@@ -27,7 +27,9 @@ First, let's include the JS file. It's self contained and basically namespaced, 
 The API isn't terrible either (at least, that's what I'd like to hope)
 
 	var encoder = new Whammy.Video(15);
-        encoder.addAudio(audioBlob); //loaded through an XHR request and passed to a file reader
+
+To add audio to the final video you pass a binary string to the addAudio method.
+        encoder.addAudio(audioBlob); 
 
 That `15` over there is the frame rate. There's a way to set the individual duration of each frame manually, but you can look in the code for that.
 
@@ -50,4 +52,5 @@ And you're done. Awesome.
 `new Weppy.Video(optional fps, optional quality)` this is the constructor for the main API. quality only applies if you're sending in contexts or canvas objects and doesn't matter if you're sending in encoded stuff
 
 `.add(canvas or context or dataURL, optional duration)` if fps isn't specified in the constructor, you can stick a duration (in milliseconds) here.
+
 `.addAudio(audioBlob)` an mp3 audio binary string.
