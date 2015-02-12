@@ -28,7 +28,8 @@ The API isn't terrible either (at least, that's what I'd like to hope)
 
 	var encoder = new Whammy.Video(15);
 
-To add audio to the final video you pass a binary string to the addAudio method.
+To add audio "only mp3 at the moment" to the final video you pass a binary string to the addAudio method.
+
         encoder.addAudio(audioBlob); 
 
 That `15` over there is the frame rate. There's a way to set the individual duration of each frame manually, but you can look in the code for that.
