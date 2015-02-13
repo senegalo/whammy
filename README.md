@@ -14,9 +14,7 @@ But, there isn't too much you can do on the client side in the ways of encoding 
 
 ## Demo
 
-http://antimatter15.github.com/whammy/clock.html
-
-http://www.sysord.fr/Sysord/ressource_whammy.jsf
+http://senegalo.com/whammy/
 
 ## Basic Usage
 
