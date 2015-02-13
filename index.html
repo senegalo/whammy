@@ -1,184 +1,87 @@
-<style>
-* {font-family: sans-serif;}
-</style>
-<progress id="progress" value="0" max="600" min="0" style="width: 300px"></progress>
-<br>
-<canvas id="canvas" width="250" height="150"></canvas>
-<br/>
-<video id="awesome" width="250" height="150" controls ></video>
-<br>
-Status: <span id="status">Idle</span>
-<a style="display:none" id="download" download="clock.webm">Download WebM</a>
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Whammy Demo</title>
 
-<script src="whammy.js"></script>
-<script>
-// use requestanimation frame, woo!
-(function() {
-  var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                              window.webkitRequestAnimationFrame || window.msRequestAnimationFrame;
-  window.requestAnimationFrame = requestAnimationFrame;
-})();
+        <style>
+            * {font-family: sans-serif;}
+        </style>
+        <script type="text/javascript" src="demo.js"></script>
+    </head>
+    <body>
+        <progress id="progress" value="0" max="600" style="width: 300px"></progress>
+        <br>
+        <canvas id="canvas" width="250" height="150"></canvas>
+        <br/>
+        <video id="awesome" width="250" height="150" controls ></video>
+        <br>
+        Status: <span id="status">Idle</span>
+        <a style="display:none" id="download" download="clock.webm">Download WebM</a>
 
-//stolen wholesale off mozilla's wiki
-function clock(time){
-	var now = new Date();
-	now.setTime(time);
-	var ctx = document.getElementById('canvas').getContext('2d');
-	ctx.save();
-	ctx.fillStyle = 'white'
-	ctx.fillRect(0,0,250,150); // videos cant handle transprency
-	ctx.translate(75,75);
-	ctx.scale(0.4,0.4);
-	ctx.rotate(-Math.PI/2);
-	ctx.strokeStyle = "black";
-	ctx.fillStyle = "white";
-	ctx.lineWidth = 8;
-	ctx.lineCap = "round";
+        <script src="whammy.js"></script>
+        <script type="text/javascript">
 
-	// Hour marks
-	ctx.save();
-	for (var i=0;i<12;i++){
-		ctx.beginPath();
-		ctx.rotate(Math.PI/6);
-		ctx.moveTo(100,0);
-		ctx.lineTo(120,0);
-		ctx.stroke();
-	}
-	ctx.restore();
+            var progress = document.getElementById('progress');
 
-	// Minute marks
-	ctx.save();
-	ctx.lineWidth = 5;
-	for (i=0;i<60;i++){
-		if (i%5!=0) {
-			ctx.beginPath();
-			ctx.moveTo(117,0);
-			ctx.lineTo(120,0);
-			ctx.stroke();
-		}
-		ctx.rotate(Math.PI/30);
-	}
-	ctx.restore();
+            var video = new Whammy.Video(15, 0.8);
 
-	var sec = now.getSeconds();
-	var min = now.getMinutes();
-	var hr  = now.getHours();
-	hr = hr>=12 ? hr-12 : hr;
+            //load the audio 
+            var state = document.getElementById('status');
+            state.innerHTML = "Loading Audio...";
 
-	ctx.fillStyle = "black";
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState === 4) {
+                    if (this.status === 200) {
+                        //this.response is what you're looking for
+                        var audioBlob = this.response;
+                        var reader = new FileReader();
+                        reader.onload = function () {
+                            video.addAudio(reader.result);
+                            state.innerHTML = "Audio Loaded ... rendering video frames";
 
-	// write Hours
-	ctx.save();
-	ctx.rotate( hr*(Math.PI/6) + (Math.PI/360)*min + (Math.PI/21600)*sec )
-	ctx.lineWidth = 14;
-	ctx.beginPath();
-	ctx.moveTo(-20,0);
-	ctx.lineTo(80,0);
-	ctx.stroke();
-	ctx.restore();
-
-	// write Minutes
-	ctx.save();
-	ctx.rotate( (Math.PI/30)*min + (Math.PI/1800)*sec )
-	ctx.lineWidth = 10;
-	ctx.beginPath();
-	ctx.moveTo(-28,0);
-	ctx.lineTo(112,0);
-	ctx.stroke();
-	ctx.restore();
-
-	// Write seconds
-	ctx.save();
-	ctx.rotate(sec * Math.PI/30);
-	ctx.strokeStyle = "#D40000";
-	ctx.fillStyle = "#D40000";
-	ctx.lineWidth = 6;
-	ctx.beginPath();
-	ctx.moveTo(-30,0);
-	ctx.lineTo(83,0);
-	ctx.stroke();
-	ctx.beginPath();
-	ctx.arc(0,0,10,0,Math.PI*2,true);
-	ctx.fill();
-	ctx.beginPath();
-	ctx.arc(95,0,10,0,Math.PI*2,true);
-	ctx.stroke();
-	ctx.fillStyle = "#555";
-	ctx.arc(0,0,3,0,Math.PI*2,true);
-	ctx.fill();
-	ctx.restore();
-
-	ctx.beginPath();
-	ctx.lineWidth = 14;
-	ctx.strokeStyle = '#325FA2';
-	ctx.arc(0,0,142,0,Math.PI*2,true);
-	ctx.stroke();
-
-	ctx.restore();
-
-	return ctx;
-}
-
-
-// the actual demo code, yaaay
-var last_time = +new Date;
-var video = new Whammy.Video(15,0.8);
-
-var progress = document.getElementById('progress');
-
-
-//load the audio 
-console.log("Loading Audio");
-var xhr = new XMLHttpRequest();
-xhr.onreadystatechange = function() {
-  if (this.readyState === 4) {
-    if (this.status === 200) {
-      //this.response is what you're looking for
-      var audioBlob = this.response;
-      var reader = new FileReader();
-      reader.onload = function() {
-        var audio = reader.result;
-        video.addAudio(reader.result);
-        console.log("Audio Loaded");
-        nextFrame();
-      };
-      reader.readAsBinaryString(audioBlob);
-    } else {
-      throw "Can't load audio from remote server";
-    }
-  }
-};
-xhr.open('GET', "all_my_days.mp3");
-xhr.responseType = 'blob';
-xhr.send();
+                            //audio loading... starting to render the actual video frames
+                            nextFrame();
+                        };
+                        reader.readAsBinaryString(audioBlob);
+                    } else {
+                        throw "Can't load audio from remote server";
+                    }
+                }
+            };
+            xhr.open('GET', "tail_toddle.mp3");
+            xhr.responseType = 'blob';
+            xhr.send();
 
 
 
-function nextFrame(){
-	progress.value++;
-	var context = clock(last_time += 1000);
-	video.add(context);
-	if(progress.value / progress.max < 1){
-		requestAnimationFrame(nextFrame);
-		document.getElementById('status').innerHTML = "Drawing Frames";
-	}else{
-		document.getElementById('status').innerHTML = "Compiling Video";
-		requestAnimationFrame(finalizeVideo); // well, should probably use settimeout instead
-	}
-	
-}
+            function nextFrame() {
+                progress.value++;
+                var context = clock(last_time += 1000);
+                video.add(context);
+                if (progress.value / progress.max < 1) {
+                    requestAnimationFrame(nextFrame);
+                    state.innerHTML = "Drawing Frames";
+                } else {
+                    state.innerHTML = "Compiling Video";
+                    requestAnimationFrame(finalizeVideo); // well, should probably use settimeout instead
+                }
+            }
 
-function finalizeVideo(){
-	var start_time = +new Date;
-	video.compile(function(output){
-            var end_time = +new Date;
-            var url = webkitURL.createObjectURL(output);
+            function finalizeVideo() {
+                var start_time = +new Date;
+                video.compile(function (output) {
+                    var end_time = +new Date;
+                    var url = webkitURL.createObjectURL(output);
 
-            document.getElementById('awesome').src = url; //toString converts it to a URL via Object URLs, falling back to DataURL
-            document.getElementById('download').style.display = '';
-            document.getElementById('download').href = url;
-            document.getElementById('status').innerHTML = "Compiled Video in " + (end_time - start_time) + "ms, file size: " + Math.ceil(output.size / 1024) + "KB";
-        });
-}
+                    document.getElementById('awesome').src = url; //toString converts it to a URL via Object URLs, falling back to DataURL
+                    document.getElementById('download').style.display = '';
+                    document.getElementById('download').href = url;
+                    state.innerHTML = "Compiled Video in " + (end_time - start_time) + "ms, file size: " + Math.ceil(output.size / 1024) + "KB";
+                });
+            }
 
-</script>
+        </script>
+
+    </body>
+</html>

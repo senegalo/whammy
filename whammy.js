@@ -133,8 +133,11 @@ window.Whammy = (function() {
             var getAudioFrame = function(shift) {
                 shift = shift || 0;
 
-                header = audioByteStream.slice(shift, shift + 4);
-                console.log(ABC.toBinary(header));
+                var header = audioByteStream.slice(shift, shift + 4);
+                
+                if(header.slice(0,3).toString() === "TAG"){
+                    return false;
+                }
 
                 var samplingFreqLookup = [[44100, 48000, 32000], [22050, 24000, 16000]];
                 var bitrateLookup = [
@@ -161,18 +164,18 @@ window.Whammy = (function() {
                         576     // Layer3
                     ]];
 
-                sampleRateFlag = (toDecimal(header.slice(2, 3)) & 0x0c) >> 2;
-                bitrateFlag = (toDecimal(header.slice(2, 3)) & 0xf0) >> 4;
+                var sampleRateFlag = (toDecimal(header.slice(2, 3)) & 0x0c) >> 2;
+                var bitrateFlag = (toDecimal(header.slice(2, 3)) & 0xf0) >> 4;
 
-                version = versionLookup[(toDecimal(header.slice(1, 2)) & 0x30) >> 4];
+                var version = versionLookup[(toDecimal(header.slice(1, 2)) & 0x30) >> 4];
 
 
                 
-                sampleRate = samplingFreqLookup[version - 1][sampleRateFlag];
-                layer = layerLookup[((toDecimal(header.slice(1, 2)) & 0x06) >> 1)];
-                bitrate = bitrateLookup[version - 1][layer - 1][bitrateFlag] * 1000;
-                padding = (toDecimal(header.slice(2, 3)) & 0x02) >> 1;
-                frameDuration =  (samplesPerFrameLookup[version - 1][layer - 1] / sampleRate) * 1000;
+                var sampleRate = samplingFreqLookup[version - 1][sampleRateFlag];
+                var layer = layerLookup[((toDecimal(header.slice(1, 2)) & 0x06) >> 1)];
+                var bitrate = bitrateLookup[version - 1][layer - 1][bitrateFlag] * 1000;
+                var padding = (toDecimal(header.slice(2, 3)) & 0x02) >> 1;
+                var frameDuration =  (samplesPerFrameLookup[version - 1][layer - 1] / sampleRate) * 1000;
                 
                 var frameSize;
 
@@ -184,8 +187,11 @@ window.Whammy = (function() {
                     throw "Unknown mp3 layer number";
                   }
                   frameSize = Math.floor(frameSize);
-
+                  /*
                   console.log({
+                    padding: padding,
+                    shift: shift,
+                    id3: ID3SIZE,
                     version: version,
                     sampleRate: sampleRate,
                     layer: layer,
@@ -195,7 +201,7 @@ window.Whammy = (function() {
                     duration: frameDuration,
                     frame: audioByteStream.slice(shift, shift + frameSize)
                 });
-
+                    */
                 return {
                     version: version,
                     sampleRate: sampleRate,
@@ -322,7 +328,7 @@ window.Whammy = (function() {
                                 "id": 0xa3
                             }]);
                         audioDuration += frame.duration;
-                    } while (audioDuration < (clusterCounter + webp.duration));
+                    } while (frame && audioDuration < (clusterCounter + webp.duration));
                 }
                 clusterCounter += webp.duration;
             }
@@ -674,6 +680,7 @@ window.Whammy = (function() {
           }
         } //the 10 more bits are the ID3 tag header size
         audio = audio.slice(i);
+        ID3SIZE = i;
       }
       this.audio = audio;
     }
